@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tracker Logs</title>
+  <style>
+    :root {
+      --bg: #f3f5f9;
+      --card: #ffffff;
+      --text: #18222e;
+      --muted: #5f6b7a;
+      --line: #d8dfe8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 0%, #e7edf8 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    }
+    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    .hint { color: var(--muted); font-size: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { text-align: left; border-bottom: 1px solid #eef2f8; padding: 8px; vertical-align: top; }
+    .mono { font-family: Consolas, Menlo, monospace; white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1 style="margin:0 0 8px;">任务执行日志</h1>
+      <p class="hint" style="margin:0 0 6px;">任务: {{ tracker.title }} (ID: {{ tracker.id }})</p>
+      <p class="hint" style="margin:0;"><a href="/admin">返回管理台</a></p>
+    </div>
+
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>开始时间</th>
+            <th>结束时间</th>
+            <th>触发方式</th>
+            <th>状态</th>
+            <th>消息</th>
+            <th>结果</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td>{{ log.id }}</td>
+            <td>{{ log.started_at }}</td>
+            <td>{{ log.ended_at or '-' }}</td>
+            <td>{{ log.trigger }}{% if log.force %} (force){% endif %}</td>
+            <td>{{ log.status }}</td>
+            <td>{{ log.message }}</td>
+            <td class="mono">{{ log.payload }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="hint">暂无执行日志</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

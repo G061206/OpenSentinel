@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OpenSentinel Admin</title>
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <style>
+    :root {
+      --bg: #f3f5f9;
+      --card: #ffffff;
+      --text: #18222e;
+      --muted: #5f6b7a;
+      --line: #d8dfe8;
+      --primary: #0b6bcb;
+      --danger: #c13838;
+      --ok: #0f8a43;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at 20% 0%, #e7edf8 0%, var(--bg) 55%);
+      color: var(--text);
+      font-family: "Segoe UI", "PingFang SC", "Noto Sans CJK SC", sans-serif;
+    }
+    .wrap { max-width: 1200px; margin: 24px auto; padding: 0 16px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+    h1 { margin: 0 0 12px; font-size: 24px; }
+    h2 { margin: 0 0 12px; font-size: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+    input, textarea, select { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 8px; font-size: 14px; }
+    textarea { min-height: 80px; resize: vertical; }
+    .actions { margin-top: 12px; }
+    button {
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+      margin-right: 8px;
+    }
+    .hint { color: var(--muted); font-size: 12px; }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>OpenSentinel 管理台</h1>
+      <p class="hint">创建跟踪任务后，系统将由 Celery Beat/Worker 持续执行抓取与告警。</p>
+      <p class="hint"><a href="/admin/config">进入系统配置页（LLM Provider / 全局 RSS）</a></p>
+    </div>
+
+    <div class="card">
+      <h2>新建 Tracker</h2>
+      <form hx-post="/admin/trackers" hx-target="#tracker-table" hx-swap="innerHTML">
+        <div class="grid">
+          <div>
+            <label>标题</label>
+            <input name="title" required>
+          </div>
+          <div>
+            <label>调度表达式</label>
+            <input name="schedule" value="*/15 * * * *" required>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label>问题</label>
+            <input name="question" required>
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label>背景描述</label>
+            <textarea name="description"></textarea>
+          </div>
+          <div>
+            <label>查询关键词（逗号或换行）</label>
+            <textarea name="queries"></textarea>
+          </div>
+          <div>
+            <label>企业微信 Webhook</label>
+            <input name="wecom_webhook_url" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?...">
+          </div>
+          <div>
+            <label>RSS URLs（逗号或换行）</label>
+            <textarea name="rss_urls"></textarea>
+          </div>
+          <div>
+            <label>网页 URLs（逗号或换行）</label>
+            <textarea name="web_urls"></textarea>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit">创建任务</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="tracker-table" class="card">
+      {% include "partials/tracker_table.html" %}
+    </div>
+  </div>
+</body>
+</html>

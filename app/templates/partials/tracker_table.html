@@ -1,0 +1,42 @@
+<h2>Tracker 列表</h2>
+<div style="overflow:auto;">
+  <table style="width:100%; border-collapse: collapse; font-size: 13px;">
+    <thead>
+      <tr>
+        <th style="text-align:left; border-bottom:1px solid #d8dfe8; padding:8px;">ID</th>
+        <th style="text-align:left; border-bottom:1px solid #d8dfe8; padding:8px;">标题</th>
+        <th style="text-align:left; border-bottom:1px solid #d8dfe8; padding:8px;">状态</th>
+        <th style="text-align:left; border-bottom:1px solid #d8dfe8; padding:8px;">等级</th>
+        <th style="text-align:left; border-bottom:1px solid #d8dfe8; padding:8px;">调度</th>
+        <th style="text-align:left; border-bottom:1px solid #d8dfe8; padding:8px;">最后执行</th>
+        <th style="text-align:left; border-bottom:1px solid #d8dfe8; padding:8px;">操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in trackers %}
+      <tr>
+        <td style="padding:8px; border-bottom:1px solid #eef2f8;">{{ t.id }}</td>
+        <td style="padding:8px; border-bottom:1px solid #eef2f8;">{{ t.title }}</td>
+        <td style="padding:8px; border-bottom:1px solid #eef2f8;">{{ t.status }}</td>
+        <td style="padding:8px; border-bottom:1px solid #eef2f8;">{{ t.current_level }}</td>
+        <td style="padding:8px; border-bottom:1px solid #eef2f8;">{{ t.schedule }}</td>
+        <td style="padding:8px; border-bottom:1px solid #eef2f8;">{{ t.last_run_at or '-' }}</td>
+        <td style="padding:8px; border-bottom:1px solid #eef2f8; white-space: nowrap;">
+          {% if t.status == 'active' %}
+          <button hx-post="/admin/trackers/{{ t.id }}/pause" hx-target="#tracker-table" hx-swap="innerHTML">暂停</button>
+          {% else %}
+          <button hx-post="/admin/trackers/{{ t.id }}/resume" hx-target="#tracker-table" hx-swap="innerHTML">恢复</button>
+          {% endif %}
+          <button hx-post="/admin/trackers/{{ t.id }}/run" hx-target="#tracker-table" hx-swap="innerHTML">立即执行</button>
+          <a href="/admin/trackers/{{ t.id }}/logs" style="display:inline-block; padding:8px 12px; background:#4e6078; color:#fff; border-radius:8px; text-decoration:none;">日志</a>
+          <button hx-post="/admin/trackers/{{ t.id }}/delete" hx-target="#tracker-table" hx-swap="innerHTML" style="background:#c13838;">删除</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" style="padding:10px; color:#5f6b7a;">暂无 tracker</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
