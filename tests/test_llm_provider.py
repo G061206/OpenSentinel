@@ -62,3 +62,16 @@ def test_judge_event_progress_fallback(monkeypatch):
     assert result["provider"] == "bailian"
     assert result["provider_mode"] == "mock_fallback"
     assert result["suggested_level"] in {"WATCH", "ELEVATED", "CRISIS", "CONFIRMED", "NORMAL"}
+
+
+def test_filter_relevant_news_mock_can_return_empty():
+    """mock 筛选在无匹配时不应强行返回相关新闻。"""
+
+    items = [
+        {"title": "weather update", "url": "u1", "content": "local rain"},
+        {"title": "sports", "url": "u2", "content": "team won"},
+    ]
+    result = filter_relevant_news("mock", "美国伊朗是否停战", items)
+    assert result["provider_mode"] == "mock_fallback"
+    assert result["relevant_count"] == 0
+    assert result["relevant_items"] == []

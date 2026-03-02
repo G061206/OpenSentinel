@@ -25,6 +25,21 @@ setup_logging()
 _TRACKER_LOCK_TIMEOUT = 600  # 10 分钟
 
 
+def _compute_duration_ms(started_at: datetime, ended_at: datetime) -> int | None:
+    """计算耗时，兼容可能出现的 naive/aware 时间对象。"""
+
+    start = started_at
+    end = ended_at
+    if start.tzinfo is None and end.tzinfo is not None:
+        start = start.replace(tzinfo=timezone.utc)
+    if start.tzinfo is not None and end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    try:
+        return max(0, int((end - start).total_seconds() * 1000))
+    except Exception:
+        return None
+
+
 def _finish_run_log(
     session: Session,
     run_log: TrackerRunLog,
@@ -41,7 +56,7 @@ def _finish_run_log(
     run_log.error_type = error_type
     ended_at = datetime.now(timezone.utc)
     run_log.ended_at = ended_at
-    run_log.duration_ms = int((ended_at - run_log.started_at).total_seconds() * 1000)
+    run_log.duration_ms = _compute_duration_ms(run_log.started_at, ended_at)
     run_log.payload = payload or {}
     session.add(run_log)
     session.commit()

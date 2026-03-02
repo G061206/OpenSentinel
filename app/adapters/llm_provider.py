@@ -291,12 +291,6 @@ def _filter_relevant_news_mock(question: str, items: list[dict[str, Any]]) -> di
         if is_relevant:
             relevant_items.append(item)
 
-    if not relevant_items and items:
-        decisions[0]["is_relevant"] = True
-        decisions[0]["score"] = 0.3
-        decisions[0]["reason"] = "recall_guardrail"
-        relevant_items.append(items[0])
-
     return {
         "question": question,
         "total_items": len(items),
@@ -370,9 +364,6 @@ def filter_relevant_news(
 
         if not decisions:
             raise ValueError("empty relevance decisions")
-
-        if not relevant_items and items:
-            relevant_items.append(items[0])
 
         return {
             "question": question,
