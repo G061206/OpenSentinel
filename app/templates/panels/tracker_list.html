@@ -1,0 +1,77 @@
+<style>
+  .panel-title { margin: 0 0 10px; font-size: 20px; }
+  .panel-subtitle { margin: 0 0 14px; color: #5f6f76; font-size: 12px; }
+  .table-wrap { overflow: auto; border: 1px solid #d7e0e3; border-radius: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 10px 8px; border-bottom: 1px solid #ebf0f2; text-align: left; vertical-align: top; }
+  th { background: #f7fbfa; color: #30434b; white-space: nowrap; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; background: #edf4f8; color: #205676; }
+  .row-actions { white-space: nowrap; }
+  .btn {
+    border: 1px solid #d7e0e3;
+    background: #f7fbfa;
+    color: #1d2a2f;
+    border-radius: 8px;
+    padding: 6px 9px;
+    cursor: pointer;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    font-size: 12px;
+  }
+  .btn.primary { background: #0d6a7b; border-color: #0d6a7b; color: #fff; }
+  .btn.danger { background: #c1362f; border-color: #c1362f; color: #fff; }
+</style>
+
+<h2 class="panel-title">任务列表</h2>
+<p class="panel-subtitle">查看运行状态、切换暂停/恢复、手动执行或进入编辑面板。</p>
+
+<p>
+  <button class="btn primary" hx-get="/admin/panels/tracker-form" hx-target="#panel-content" hx-swap="innerHTML">+ 新建任务</button>
+</p>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>标题</th>
+        <th>Provider</th>
+        <th>RSS 数</th>
+        <th>状态</th>
+        <th>等级</th>
+        <th>调度</th>
+        <th>最后执行</th>
+        <th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in trackers %}
+      <tr>
+        <td>{{ t.id }}</td>
+        <td>{{ t.title }}</td>
+        <td>{{ t._provider_name or '-' }}</td>
+        <td>{{ t._rss_sources|length if t._rss_sources is defined else 0 }}</td>
+        <td><span class="badge">{{ t.status }}</span></td>
+        <td>{{ t.current_level }}</td>
+        <td>{{ t.schedule }}</td>
+        <td>{{ t.last_run_at or '-' }}</td>
+        <td class="row-actions">
+          <button class="btn" hx-get="/admin/panels/tracker-form/{{ t.id }}" hx-target="#panel-content" hx-swap="innerHTML">编辑</button>
+          {% if t.status == 'active' %}
+          <button class="btn" hx-post="/admin/trackers/{{ t.id }}/pause" hx-target="#panel-content" hx-swap="innerHTML">暂停</button>
+          {% else %}
+          <button class="btn" hx-post="/admin/trackers/{{ t.id }}/resume" hx-target="#panel-content" hx-swap="innerHTML">恢复</button>
+          {% endif %}
+          <button class="btn" hx-post="/admin/trackers/{{ t.id }}/run" hx-target="#panel-content" hx-swap="innerHTML">执行</button>
+          <button class="btn" hx-get="/admin/panels/tracker-logs/{{ t.id }}" hx-target="#panel-content" hx-swap="innerHTML">日志</button>
+          <button class="btn danger" hx-post="/admin/trackers/{{ t.id }}/delete" hx-target="#panel-content" hx-swap="innerHTML">删除</button>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="9" style="color:#5f6f76;">暂无任务，请先创建。</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

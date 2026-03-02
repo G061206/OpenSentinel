@@ -6,6 +6,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from app.models.enums import EventLevel, TrackerStatus
+from app.schemas.rss_source import RSSSourceRead
 
 
 class TrackerBase(BaseModel):
@@ -25,7 +26,8 @@ class TrackerBase(BaseModel):
 class TrackerCreate(TrackerBase):
     """创建任务请求体。"""
 
-    pass
+    llm_provider_id: int | None = None
+    rss_source_ids: list[int] = Field(default_factory=list)
 
 
 class TrackerUpdate(BaseModel):
@@ -41,6 +43,8 @@ class TrackerUpdate(BaseModel):
     delivery_channels: dict[str, Any] | None = None
     status: TrackerStatus | None = None
     priority: int | None = None
+    llm_provider_id: int | None = None
+    rss_source_ids: list[int] | None = None
 
 
 class TrackerRead(TrackerBase):
@@ -49,6 +53,8 @@ class TrackerRead(TrackerBase):
     id: int
     status: TrackerStatus
     current_level: EventLevel
+    llm_provider_id: int | None
+    rss_sources: list[RSSSourceRead] = Field(default_factory=list)
     last_run_at: datetime | None
     created_at: datetime
     updated_at: datetime

@@ -14,7 +14,8 @@ from app.services.ingestion_service import IngestionService
 from app.services.normalization_service import NormalizationService
 from app.services.report_service import ReportService
 from app.services.hash_service import stable_hash
-from app.services.system_config_service import SystemConfigService
+from app.services.llm_provider_service import LLMProviderService
+from app.services.rss_source_service import RSSSourceService
 
 
 class TrackerRunService:
@@ -27,11 +28,26 @@ class TrackerRunService:
         if tracker.id is None:
             raise ValueError("tracker id is required")
 
-        system_config = SystemConfigService.get_or_create(session)
+        # 获取 LLM Provider 配置
+        provider_config = None
+        if tracker.llm_provider_id:
+            provider_config = LLMProviderService.get(session, tracker.llm_provider_id)
+        if not provider_config:
+            provider_config = LLMProviderService.get_default(session)
+
+        llm_provider = provider_config.provider_type.value if provider_config else "mock"
+        llm_api_key = provider_config.api_key if provider_config else ""
+        llm_model = provider_config.model if provider_config else ""
+        llm_base_url = provider_config.base_url if provider_config else ""
+
+        # 获取 RSS 源 URL 列表
+        rss_sources = RSSSourceService.get_sources_for_tracker(session, tracker.id)
+        rss_urls = [s.url for s in rss_sources]
+
         previous_level = tracker.current_level
         raw_items = IngestionService.collect(
             tracker.source_profile,
-            extra_rss_urls=system_config.global_rss_urls,
+            extra_rss_urls=rss_urls,
         )
         normalized_items = NormalizationService.normalize(raw_items)
         new_items = DedupService.filter_new_items(session, tracker.id, normalized_items)
@@ -61,9 +77,9 @@ class TrackerRunService:
             tracker,
             level,
             new_items,
-            llm_provider=system_config.llm_provider,
-            llm_api_key=system_config.llm_api_key,
-            llm_model=system_config.llm_model,
+            llm_provider=llm_provider,
+            llm_api_key=llm_api_key,
+            llm_model=llm_model,
         )
         evidence_fingerprint = stable_hash(*sorted([item["stable_hash"] for item in new_items]), level.value)
         dedupe_key = f"alert:{tracker.id}:{evidence_fingerprint}"

@@ -12,7 +12,7 @@ def test_tracker_run_once(session, monkeypatch):
         title="run",
         question="Q",
         status=TrackerStatus.active,
-        source_profile={"rss_urls": ["https://example.com/feed.xml"]},
+        source_profile={"web_urls": []},
         delivery_channels={"wecom_webhook_url": ""},
     )
     session.add(tracker)
@@ -21,7 +21,7 @@ def test_tracker_run_once(session, monkeypatch):
 
     monkeypatch.setattr(
         "app.services.ingestion_service.IngestionService.collect",
-        lambda _: [
+        lambda *args, **kwargs: [
             {
                 "source_type": "rss",
                 "source_name": "src",
@@ -33,6 +33,20 @@ def test_tracker_run_once(session, monkeypatch):
         ],
     )
     monkeypatch.setattr("app.services.delivery_service.DeliveryService.deliver", lambda *_: True)
+    # Mock RSS sources for tracker (empty list)
+    monkeypatch.setattr(
+        "app.services.rss_source_service.RSSSourceService.get_sources_for_tracker",
+        lambda session, tid: [],
+    )
+    # Mock LLM provider lookup
+    monkeypatch.setattr(
+        "app.services.llm_provider_service.LLMProviderService.get",
+        lambda session, pid: None,
+    )
+    monkeypatch.setattr(
+        "app.services.llm_provider_service.LLMProviderService.get_default",
+        lambda session: None,
+    )
 
     result = TrackerRunService.run_once(session, tracker)
     assert result["new_items"] == 1

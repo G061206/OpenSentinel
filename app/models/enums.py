@@ -19,3 +19,14 @@ class EventLevel(str, Enum):
     ELEVATED = "ELEVATED"
     CRISIS = "CRISIS"
     CONFIRMED = "CONFIRMED"
+
+
+class LLMProviderType(str, Enum):
+    """LLM 提供商类型。"""
+
+    mock = "mock"
+    openai = "openai"
+    openrouter = "openrouter"
+    bailian = "bailian"
+    anthropic = "anthropic"
+    custom = "custom"

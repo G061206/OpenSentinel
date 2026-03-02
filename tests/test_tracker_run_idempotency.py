@@ -12,7 +12,7 @@ def test_tracker_run_dedupes_same_evidence(session, monkeypatch):
         title="idem",
         question="Q",
         status=TrackerStatus.active,
-        source_profile={"rss_urls": ["https://example.com/feed.xml"]},
+        source_profile={"web_urls": []},
         delivery_channels={"wecom_webhook_url": ""},
     )
     session.add(tracker)
@@ -29,7 +29,24 @@ def test_tracker_run_dedupes_same_evidence(session, monkeypatch):
             "published_at": None,
         }
     ]
-    monkeypatch.setattr("app.services.ingestion_service.IngestionService.collect", lambda _: payload)
+    monkeypatch.setattr(
+        "app.services.ingestion_service.IngestionService.collect",
+        lambda *args, **kwargs: payload,
+    )
+
+    # Mock RSS sources and LLM provider
+    monkeypatch.setattr(
+        "app.services.rss_source_service.RSSSourceService.get_sources_for_tracker",
+        lambda session, tid: [],
+    )
+    monkeypatch.setattr(
+        "app.services.llm_provider_service.LLMProviderService.get",
+        lambda session, pid: None,
+    )
+    monkeypatch.setattr(
+        "app.services.llm_provider_service.LLMProviderService.get_default",
+        lambda session: None,
+    )
 
     delivery_calls = {"count": 0}
 

@@ -26,6 +26,7 @@ class TrackerTask(SQLModel, table=True):
     status: TrackerStatus = Field(default=TrackerStatus.active, index=True)
     priority: int = 50
     current_level: EventLevel = Field(default=EventLevel.NORMAL)
+    llm_provider_id: Optional[int] = Field(default=None, foreign_key="llm_providers.id")
     last_run_at: Optional[datetime] = Field(default=None, index=True)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), nullable=False)

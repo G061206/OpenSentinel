@@ -1,0 +1,95 @@
+<style>
+  .panel-title { margin: 0 0 10px; font-size: 20px; }
+  .panel-subtitle { margin: 0 0 14px; color: #5f6f76; font-size: 12px; }
+  .box { border: 1px solid #d7e0e3; border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #f9fbfc; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  label { display: block; margin-bottom: 4px; color: #5f6f76; font-size: 12px; }
+  input, select { width: 100%; border: 1px solid #d7e0e3; border-radius: 8px; padding: 8px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 8px; border-bottom: 1px solid #ebf0f2; text-align: left; }
+  th { background: #f7fbfa; color: #30434b; }
+  .btn {
+    border: 1px solid #d7e0e3;
+    background: #f7fbfa;
+    color: #1d2a2f;
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    margin-right: 5px;
+  }
+  .btn.primary { background: #0d6a7b; border-color: #0d6a7b; color: #fff; }
+  .btn.danger { background: #c1362f; border-color: #c1362f; color: #fff; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+
+<h2 class="panel-title">LLM Providers</h2>
+<p class="panel-subtitle">独立面板：在这里添加/删除 Provider，并切换默认 Provider。</p>
+
+<div class="box">
+  <form hx-post="/admin/providers" hx-target="#panel-content" hx-swap="innerHTML">
+    <div class="grid">
+      <div>
+        <label>名称</label>
+        <input name="name" required placeholder="例如: OpenRouter Production">
+      </div>
+      <div>
+        <label>Provider 类型</label>
+        <select name="provider_type">
+          {% for t in provider_types %}
+          <option value="{{ t.value }}">{{ t.value }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>模型</label>
+        <input name="model" placeholder="例如: openai/gpt-4o-mini">
+      </div>
+      <div>
+        <label>API Key</label>
+        <input name="api_key" placeholder="sk-...">
+      </div>
+      <div>
+        <label>Base URL</label>
+        <input name="base_url" placeholder="可选">
+      </div>
+      <div style="display:flex; align-items:flex-end;">
+        <label style="margin-right:8px;"><input type="checkbox" name="is_default" value="true"> 设为默认</label>
+      </div>
+    </div>
+    <p style="margin-top:10px;"><button class="btn primary" type="submit">添加 Provider</button></p>
+  </form>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>名称</th>
+      <th>类型</th>
+      <th>模型</th>
+      <th>默认</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in providers %}
+    <tr>
+      <td>{{ p.id }}</td>
+      <td>{{ p.name }}</td>
+      <td>{{ p.provider_type }}</td>
+      <td>{{ p.model or '-' }}</td>
+      <td>{{ '是' if p.is_default else '否' }}</td>
+      <td>
+        {% if not p.is_default %}
+        <button class="btn" hx-post="/admin/providers/{{ p.id }}/set-default" hx-target="#panel-content" hx-swap="innerHTML">设默认</button>
+        {% endif %}
+        <button class="btn danger" hx-post="/admin/providers/{{ p.id }}/delete" hx-target="#panel-content" hx-swap="innerHTML">删除</button>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="6" style="color:#5f6f76;">暂无 Provider，系统将回退到 mock。</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

@@ -1,0 +1,84 @@
+<style>
+  .panel-title { margin: 0 0 10px; font-size: 20px; }
+  .panel-subtitle { margin: 0 0 14px; color: #5f6f76; font-size: 12px; }
+  .box { border: 1px solid #d7e0e3; border-radius: 10px; padding: 12px; margin-bottom: 12px; background: #f9fbfc; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  label { display: block; margin-bottom: 4px; color: #5f6f76; font-size: 12px; }
+  input, textarea { width: 100%; border: 1px solid #d7e0e3; border-radius: 8px; padding: 8px; font-size: 14px; }
+  textarea { min-height: 90px; resize: vertical; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 9px 8px; border-bottom: 1px solid #ebf0f2; text-align: left; }
+  th { background: #f7fbfa; color: #30434b; }
+  .btn {
+    border: 1px solid #d7e0e3;
+    background: #f7fbfa;
+    color: #1d2a2f;
+    border-radius: 8px;
+    padding: 6px 10px;
+    cursor: pointer;
+    margin-right: 5px;
+  }
+  .btn.primary { background: #0d6a7b; border-color: #0d6a7b; color: #fff; }
+  .btn.danger { background: #c1362f; border-color: #c1362f; color: #fff; }
+  .hint { color: #5f6f76; font-size: 12px; margin-top: 6px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+
+<h2 class="panel-title">RSS 信源管理</h2>
+<p class="panel-subtitle">独立面板：支持单条创建和批量导入，供任务表单复用。</p>
+
+<div class="box">
+  <form hx-post="/admin/rss-sources" hx-target="#panel-content" hx-swap="innerHTML">
+    <div class="grid">
+      <div>
+        <label>名称</label>
+        <input name="name" placeholder="例如: 36kr 科技">
+      </div>
+      <div>
+        <label>分类</label>
+        <input name="category" placeholder="例如: 科技">
+      </div>
+      <div class="wide" style="grid-column:1 / -1;">
+        <label>单条 URL</label>
+        <input name="url" placeholder="https://example.com/feed.xml">
+      </div>
+      <div class="wide" style="grid-column:1 / -1;">
+        <label>批量 URL（每行一个，填写后优先于单条）</label>
+        <textarea name="bulk_urls" placeholder="https://a.com/feed.xml\nhttps://b.com/rss"></textarea>
+      </div>
+    </div>
+    <p class="hint">如果 URL 已存在，会自动跳过重复项。</p>
+    <p style="margin-top:10px;"><button class="btn primary" type="submit">添加 RSS 源</button></p>
+  </form>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>ID</th>
+      <th>名称</th>
+      <th>URL</th>
+      <th>分类</th>
+      <th>引用数</th>
+      <th>操作</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in rss_sources %}
+    <tr>
+      <td>{{ s.id }}</td>
+      <td>{{ s.name }}</td>
+      <td>{{ s.url }}</td>
+      <td>{{ s.category or '-' }}</td>
+      <td>{{ s._ref_count or 0 }}</td>
+      <td>
+        <button class="btn danger" hx-post="/admin/rss-sources/{{ s.id }}/delete" hx-target="#panel-content" hx-swap="innerHTML">删除</button>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="6" style="color:#5f6f76;">暂无 RSS 源。</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

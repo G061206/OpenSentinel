@@ -1,0 +1,119 @@
+<style>
+  .panel-title { margin: 0 0 10px; font-size: 20px; }
+  .panel-subtitle { margin: 0 0 14px; color: #5f6f76; font-size: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .wide { grid-column: 1 / -1; }
+  label { display: block; margin-bottom: 4px; color: #5f6f76; font-size: 12px; }
+  input, textarea, select {
+    width: 100%;
+    border: 1px solid #d7e0e3;
+    border-radius: 9px;
+    padding: 8px 10px;
+    font-size: 14px;
+    background: #fff;
+  }
+  textarea { min-height: 90px; resize: vertical; }
+  .actions { margin-top: 12px; }
+  .btn {
+    border: 1px solid #d7e0e3;
+    background: #f7fbfa;
+    color: #1d2a2f;
+    border-radius: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    margin-right: 8px;
+  }
+  .btn.primary { background: #0d6a7b; border-color: #0d6a7b; color: #fff; }
+  .hint { color: #5f6f76; font-size: 12px; margin-top: 6px; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+</style>
+
+{% set is_edit = tracker is not none %}
+<h2 class="panel-title">{{ "编辑跟踪任务" if is_edit else "新建跟踪任务" }}</h2>
+<p class="panel-subtitle">独立面板：任务字段、Provider 绑定和 RSS 绑定都在这里完成。</p>
+
+<form
+  {% if is_edit %}
+  hx-post="/admin/trackers/{{ tracker.id }}/update"
+  {% else %}
+  hx-post="/admin/trackers"
+  {% endif %}
+  hx-target="#panel-content"
+  hx-swap="innerHTML"
+  onsubmit="const s=document.getElementById('rss-source-select'); const h=document.getElementById('rss-source-ids'); h.value=Array.from(s.selectedOptions).map(o=>o.value).join(',');"
+>
+  <div class="grid">
+    <div>
+      <label>标题</label>
+      <input name="title" value="{{ tracker.title if is_edit else '' }}" required>
+    </div>
+    <div>
+      <label>调度表达式</label>
+      <input name="schedule" value="{{ tracker.schedule if is_edit else '*/15 * * * *' }}" required>
+    </div>
+
+    <div class="wide">
+      <label>问题</label>
+      <input name="question" value="{{ tracker.question if is_edit else '' }}" required>
+    </div>
+
+    <div class="wide">
+      <label>背景描述</label>
+      <textarea name="description">{{ tracker.description if is_edit else '' }}</textarea>
+    </div>
+
+    <div>
+      <label>查询关键词（逗号或换行）</label>
+      <textarea name="queries">{{ tracker.queries|join('\n') if is_edit else '' }}</textarea>
+    </div>
+
+    <div>
+      <label>网页 URLs（逗号或换行）</label>
+      <textarea name="web_urls">{{ tracker.source_profile.get('web_urls', [])|join('\n') if is_edit else '' }}</textarea>
+    </div>
+
+    <div>
+      <label>企业微信 Webhook</label>
+      <input name="wecom_webhook_url" value="{{ tracker.delivery_channels.get('wecom_webhook_url', '') if is_edit else '' }}" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?...">
+    </div>
+
+    <div>
+      <label>LLM Provider</label>
+      <select name="llm_provider_id">
+        <option value="">使用默认 Provider</option>
+        {% for p in providers %}
+        <option value="{{ p.id }}" {% if is_edit and tracker.llm_provider_id == p.id %}selected{% endif %}>{{ p.name }} ({{ p.provider_type }})</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="wide">
+      <label>绑定 RSS 源（可多选）</label>
+      <select id="rss-source-select" size="8" multiple>
+        {% for s in rss_sources %}
+        <option value="{{ s.id }}" {% if s.id in tracker_rss_ids %}selected{% endif %}>{{ s.name }} | {{ s.url }}</option>
+        {% endfor %}
+      </select>
+      <input id="rss-source-ids" type="hidden" name="rss_source_ids" value="{{ tracker_rss_ids|join(',') }}">
+      <p class="hint">按 Ctrl/Command 可多选；提交时自动写入关联 ID。</p>
+    </div>
+
+    <div>
+      <label>elevated 阈值</label>
+      <input type="number" min="1" name="elevated_threshold" value="{{ tracker.alert_rules.get('elevated_threshold', 2) if is_edit else 2 }}">
+    </div>
+    <div>
+      <label>crisis 阈值</label>
+      <input type="number" min="1" name="crisis_threshold" value="{{ tracker.alert_rules.get('crisis_threshold', 4) if is_edit else 4 }}">
+    </div>
+    <div>
+      <label>confirmed 阈值</label>
+      <input type="number" min="1" name="confirmed_threshold" value="{{ tracker.alert_rules.get('confirmed_threshold', 6) if is_edit else 6 }}">
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn primary" type="submit">{{ "保存修改" if is_edit else "创建任务" }}</button>
+    <button class="btn" type="button" hx-get="/admin/panels/trackers" hx-target="#panel-content" hx-swap="innerHTML">返回列表</button>
+  </div>
+</form>
