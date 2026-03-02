@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     app_host: str = "0.0.0.0"
     app_port: int = 8000
+    log_level: str = "INFO"
+    log_json: bool = False
 
     database_url: str = "sqlite:///./opensentinel.db"
     redis_url: str = "redis://localhost:6379/0"

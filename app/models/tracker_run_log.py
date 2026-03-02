@@ -14,10 +14,13 @@ class TrackerRunLog(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     tracker_id: int = Field(index=True)
+    run_id: str = Field(default="", index=True)
     trigger: str = Field(default="schedule", index=True)
     force: bool = Field(default=False, index=True)
     status: str = Field(default="running", index=True)
     message: str = Field(default="")
+    error_type: str = Field(default="", index=True)
+    duration_ms: Optional[int] = Field(default=None, index=True)
     payload: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
     started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc), index=True)
     ended_at: Optional[datetime] = Field(default=None, index=True)

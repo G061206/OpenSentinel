@@ -4,6 +4,8 @@
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   th, td { padding: 9px 8px; border-bottom: 1px solid #ebf0f2; text-align: left; vertical-align: top; }
   th { background: #f7fbfa; color: #30434b; }
+  .muted { color: #5f6f76; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
   .btn {
     border: 1px solid #d7e0e3;
     background: #f7fbfa;
@@ -24,9 +26,13 @@
     <tr>
       <th>开始时间</th>
       <th>结束时间</th>
+      <th>Run ID</th>
       <th>触发方式</th>
       <th>状态</th>
+      <th>耗时(ms)</th>
+      <th>错误类型</th>
       <th>消息</th>
+      <th>结果摘要</th>
     </tr>
   </thead>
   <tbody>
@@ -34,13 +40,23 @@
     <tr>
       <td>{{ log.started_at }}</td>
       <td>{{ log.ended_at or '-' }}</td>
+      <td class="mono">{{ log.run_id or '-' }}</td>
       <td>{{ log.trigger }}</td>
       <td>{{ log.status }}</td>
+      <td>{{ log.duration_ms if log.duration_ms is not none else '-' }}</td>
+      <td>{{ log.error_type or '-' }}</td>
       <td>{{ log.message }}</td>
+      <td class="mono muted">
+        {% if log.payload %}
+          new={{ log.payload.get('new_items', '-') }}, relevant={{ log.payload.get('relevant_items', '-') }}, delivered={{ log.payload.get('delivered', '-') }}
+        {% else %}
+          -
+        {% endif %}
+      </td>
     </tr>
     {% else %}
     <tr>
-      <td colspan="5" style="color:#5f6f76;">暂无执行日志。</td>
+      <td colspan="9" style="color:#5f6f76;">暂无执行日志。</td>
     </tr>
     {% endfor %}
   </tbody>

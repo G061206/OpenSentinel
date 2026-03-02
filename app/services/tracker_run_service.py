@@ -1,6 +1,8 @@
 """单次任务执行主流程服务。"""
 
 from datetime import datetime, timezone
+import logging
+from time import perf_counter
 
 from sqlmodel import Session, select
 
@@ -25,6 +27,8 @@ class TrackerRunService:
     def run_once(session: Session, tracker: TrackerTask) -> dict:
         """执行一次 tracker 并返回执行结果摘要。"""
 
+        logger = logging.getLogger(__name__)
+
         if tracker.id is None:
             raise ValueError("tracker id is required")
 
@@ -44,16 +48,36 @@ class TrackerRunService:
         rss_urls = [s.url for s in rss_sources]
 
         previous_level = tracker.current_level
+        stage_started = perf_counter()
         raw_items = IngestionService.collect(
             tracker.source_profile,
             extra_rss_urls=rss_urls,
         )
+        collect_ms = int((perf_counter() - stage_started) * 1000)
+
+        stage_started = perf_counter()
         normalized_items = NormalizationService.normalize(raw_items)
+        normalize_ms = int((perf_counter() - stage_started) * 1000)
+
+        stage_started = perf_counter()
         new_items = DedupService.filter_new_items(session, tracker.id, normalized_items)
+        dedup_ms = int((perf_counter() - stage_started) * 1000)
+
+        logger.info(
+            "pipeline stage finished tracker_id=%d raw=%d normalized=%d new=%d collect_ms=%d normalize_ms=%d dedup_ms=%d",
+            tracker.id,
+            len(raw_items),
+            len(normalized_items),
+            len(new_items),
+            collect_ms,
+            normalize_ms,
+            dedup_ms,
+        )
 
         for item in new_items:
             session.add(RawItem(tracker_id=tracker.id, **item))
 
+        stage_started = perf_counter()
         analysis = ReportService.analyze_event_progress(
             tracker.question,
             new_items,
@@ -61,9 +85,17 @@ class TrackerRunService:
             llm_api_key=llm_api_key,
             llm_model=llm_model,
         )
+        analyze_ms = int((perf_counter() - stage_started) * 1000)
         relevant_items = analysis.get("relevant_items", [])
         if not isinstance(relevant_items, list):
             relevant_items = []
+
+        logger.info(
+            "analysis stage finished tracker_id=%d relevant=%d analyze_ms=%d",
+            tracker.id,
+            len(relevant_items),
+            analyze_ms,
+        )
 
         level = EvaluationService.evaluate(tracker.alert_rules, relevant_items, previous_level=previous_level)
         now = datetime.now(timezone.utc)
@@ -82,6 +114,12 @@ class TrackerRunService:
                 "level": level.value,
                 "delivered": False,
                 "deduped": True,
+                "metrics": {
+                    "collect_ms": collect_ms,
+                    "normalize_ms": normalize_ms,
+                    "dedup_ms": dedup_ms,
+                    "analyze_ms": analyze_ms,
+                },
             }
 
         markdown, payload = ReportService.build_alert_report(
@@ -107,6 +145,12 @@ class TrackerRunService:
                 "level": level.value,
                 "delivered": existing.delivered,
                 "deduped": True,
+                "metrics": {
+                    "collect_ms": collect_ms,
+                    "normalize_ms": normalize_ms,
+                    "dedup_ms": dedup_ms,
+                    "analyze_ms": analyze_ms,
+                },
             }
 
         report = Report(
@@ -133,4 +177,10 @@ class TrackerRunService:
             "level": level.value,
             "delivered": delivered,
             "deduped": False,
+            "metrics": {
+                "collect_ms": collect_ms,
+                "normalize_ms": normalize_ms,
+                "dedup_ms": dedup_ms,
+                "analyze_ms": analyze_ms,
+            },
         }

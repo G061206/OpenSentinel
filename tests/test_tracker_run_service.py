@@ -51,6 +51,8 @@ def test_tracker_run_once(session, monkeypatch):
     result = TrackerRunService.run_once(session, tracker)
     assert result["new_items"] == 1
     assert result["relevant_items"] == 1
+    assert "metrics" in result
+    assert "collect_ms" in result["metrics"]
     assert result["delivered"] is True
 
 
@@ -112,6 +114,7 @@ def test_tracker_run_skips_delivery_when_no_relevant(session, monkeypatch):
     result = TrackerRunService.run_once(session, tracker)
     assert result["new_items"] == 1
     assert result["relevant_items"] == 0
+    assert "metrics" in result
     assert result["delivered"] is False
     assert result["deduped"] is True
     assert called["deliver"] == 0

@@ -20,14 +20,24 @@ def _ensure_compatible_columns() -> None:
     """为历史数据库补齐必要字段，避免旧库启动报错。"""
 
     inspector = inspect(engine)
-    if "tracker_tasks" not in inspector.get_table_names():
-        return
-
-    columns = {c["name"] for c in inspector.get_columns("tracker_tasks")}
     statements: list[str] = []
 
-    if "llm_provider_id" not in columns:
-        statements.append("ALTER TABLE tracker_tasks ADD COLUMN llm_provider_id INTEGER")
+    table_names = set(inspector.get_table_names())
+    if "tracker_tasks" in table_names:
+        tracker_columns = {c["name"] for c in inspector.get_columns("tracker_tasks")}
+
+        if "llm_provider_id" not in tracker_columns:
+            statements.append("ALTER TABLE tracker_tasks ADD COLUMN llm_provider_id INTEGER")
+
+    if "tracker_run_logs" in table_names:
+        run_log_columns = {c["name"] for c in inspector.get_columns("tracker_run_logs")}
+
+        if "run_id" not in run_log_columns:
+            statements.append("ALTER TABLE tracker_run_logs ADD COLUMN run_id VARCHAR(64) DEFAULT ''")
+        if "error_type" not in run_log_columns:
+            statements.append("ALTER TABLE tracker_run_logs ADD COLUMN error_type VARCHAR(64) DEFAULT ''")
+        if "duration_ms" not in run_log_columns:
+            statements.append("ALTER TABLE tracker_run_logs ADD COLUMN duration_ms INTEGER")
 
     if not statements:
         return
