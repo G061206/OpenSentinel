@@ -1,6 +1,6 @@
 """LLM Provider 适配器测试。"""
 
-from app.adapters.llm_provider import extract_facts
+from app.adapters.llm_provider import extract_facts, filter_relevant_news, judge_event_progress
 
 
 def test_extract_facts_openrouter_real_mode(monkeypatch):
@@ -27,3 +27,38 @@ def test_extract_facts_bailian_fallback(monkeypatch):
     assert result["provider"] == "bailian"
     assert result["provider_mode"] == "mock_fallback"
     assert "error" in result
+
+
+def test_filter_relevant_news_real_mode(monkeypatch):
+    """相关性筛选成功时应返回 real 模式并映射条目。"""
+
+    monkeypatch.setattr(
+        "app.adapters.llm_provider._call_provider_json",
+        lambda **_: {
+            "decisions": [
+                {"index": 1, "is_relevant": True, "score": 0.91, "reason": "match", "matched_aspects": ["x"]},
+                {"index": 2, "is_relevant": False, "score": 0.2, "reason": "noise", "matched_aspects": []},
+            ]
+        },
+    )
+    items = [
+        {"title": "t1", "url": "u1", "content": "c1"},
+        {"title": "t2", "url": "u2", "content": "c2"},
+    ]
+    result = filter_relevant_news("openrouter", "q", items, api_key="k", model="m")
+    assert result["provider_mode"] == "real"
+    assert result["relevant_count"] == 1
+    assert result["relevant_items"][0]["url"] == "u1"
+
+
+def test_judge_event_progress_fallback(monkeypatch):
+    """进展判断失败时应回退 mock。"""
+
+    def _raise(**_):
+        raise RuntimeError("network error")
+
+    monkeypatch.setattr("app.adapters.llm_provider._call_provider_json", _raise)
+    result = judge_event_progress("bailian", "q", [{"title": "t", "url": "u", "content": "c"}], api_key="k", model="m")
+    assert result["provider"] == "bailian"
+    assert result["provider_mode"] == "mock_fallback"
+    assert result["suggested_level"] in {"WATCH", "ELEVATED", "CRISIS", "CONFIRMED", "NORMAL"}

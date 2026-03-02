@@ -38,7 +38,6 @@ class TrackerRunService:
         llm_provider = provider_config.provider_type.value if provider_config else "mock"
         llm_api_key = provider_config.api_key if provider_config else ""
         llm_model = provider_config.model if provider_config else ""
-        llm_base_url = provider_config.base_url if provider_config else ""
 
         # 获取 RSS 源 URL 列表
         rss_sources = RSSSourceService.get_sources_for_tracker(session, tracker.id)
@@ -55,19 +54,31 @@ class TrackerRunService:
         for item in new_items:
             session.add(RawItem(tracker_id=tracker.id, **item))
 
-        level = EvaluationService.evaluate(tracker.alert_rules, new_items, previous_level=previous_level)
+        analysis = ReportService.analyze_event_progress(
+            tracker.question,
+            new_items,
+            llm_provider=llm_provider,
+            llm_api_key=llm_api_key,
+            llm_model=llm_model,
+        )
+        relevant_items = analysis.get("relevant_items", [])
+        if not isinstance(relevant_items, list):
+            relevant_items = []
+
+        level = EvaluationService.evaluate(tracker.alert_rules, relevant_items, previous_level=previous_level)
         now = datetime.now(timezone.utc)
         tracker.current_level = level
         tracker.updated_at = now
         tracker.last_run_at = now
 
         # 无新增且状态不变：跳过生成与推送，避免噪声。
-        if not new_items and level == previous_level:
+        if not relevant_items and level == previous_level:
             session.add(tracker)
             session.commit()
             return {
                 "tracker_id": tracker.id,
-                "new_items": 0,
+                "new_items": len(new_items),
+                "relevant_items": 0,
                 "level": level.value,
                 "delivered": False,
                 "deduped": True,
@@ -80,8 +91,9 @@ class TrackerRunService:
             llm_provider=llm_provider,
             llm_api_key=llm_api_key,
             llm_model=llm_model,
+            analysis=analysis,
         )
-        evidence_fingerprint = stable_hash(*sorted([item["stable_hash"] for item in new_items]), level.value)
+        evidence_fingerprint = stable_hash(*sorted([item["stable_hash"] for item in relevant_items]), level.value)
         dedupe_key = f"alert:{tracker.id}:{evidence_fingerprint}"
         existing = session.exec(select(Report).where(Report.dedupe_key == dedupe_key)).first()
         # 相同证据指纹已经生成过报告：直接复用结果，避免重复推送。
@@ -91,6 +103,7 @@ class TrackerRunService:
             return {
                 "tracker_id": tracker.id,
                 "new_items": len(new_items),
+                "relevant_items": len(relevant_items),
                 "level": level.value,
                 "delivered": existing.delivered,
                 "deduped": True,
@@ -116,6 +129,7 @@ class TrackerRunService:
         return {
             "tracker_id": tracker.id,
             "new_items": len(new_items),
+            "relevant_items": len(relevant_items),
             "level": level.value,
             "delivered": delivered,
             "deduped": False,
