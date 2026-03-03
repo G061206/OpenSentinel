@@ -118,3 +118,67 @@ def test_tracker_run_skips_delivery_when_no_relevant(session, monkeypatch):
     assert result["delivered"] is False
     assert result["deduped"] is True
     assert called["deliver"] == 0
+
+
+def test_tracker_run_force_delivers_when_no_relevant(session, monkeypatch):
+    """force 手动触发时，即使无相关新闻也应发送一次报告。"""
+
+    tracker = TrackerTask(
+        title="run",
+        question="Q",
+        status=TrackerStatus.active,
+        source_profile={"web_urls": []},
+        delivery_channels={"wecom_webhook_url": "https://example.com/webhook"},
+    )
+    session.add(tracker)
+    session.commit()
+    session.refresh(tracker)
+
+    monkeypatch.setattr(
+        "app.services.ingestion_service.IngestionService.collect",
+        lambda *args, **kwargs: [
+            {
+                "source_type": "rss",
+                "source_name": "src",
+                "url": "https://example.com/z",
+                "title": "Z",
+                "content": "content",
+                "published_at": None,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "app.services.rss_source_service.RSSSourceService.get_sources_for_tracker",
+        lambda session, tid: [],
+    )
+    monkeypatch.setattr(
+        "app.services.llm_provider_service.LLMProviderService.get",
+        lambda session, pid: None,
+    )
+    monkeypatch.setattr(
+        "app.services.llm_provider_service.LLMProviderService.get_default",
+        lambda session: None,
+    )
+    monkeypatch.setattr(
+        "app.services.report_service.ReportService.analyze_event_progress",
+        lambda *args, **kwargs: {
+            "total_new_items": 1,
+            "relevant_items": [],
+            "relevance": {"provider_mode": "mock_fallback"},
+            "progress": {"suggested_level": "NORMAL", "confidence": 0.1},
+        },
+    )
+
+    called = {"deliver": 0}
+    monkeypatch.setattr(
+        "app.services.delivery_service.DeliveryService.deliver",
+        lambda *_: called.update(deliver=called["deliver"] + 1) or True,
+    )
+
+    result = TrackerRunService.run_once(session, tracker, force=True)
+    assert result["new_items"] == 1
+    assert result["relevant_items"] == 0
+    assert result["forced"] is True
+    assert result["delivered"] is True
+    assert result["deduped"] is False
+    assert called["deliver"] == 1

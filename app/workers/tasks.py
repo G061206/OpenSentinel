@@ -138,7 +138,7 @@ def run_tracker_once(tracker_id: int, force: bool = False) -> dict:
 
             try:
                 # last_run_at 在 TrackerRunService.run_once 成功提交时更新。
-                result = TrackerRunService.run_once(session, tracker)
+                result = TrackerRunService.run_once(session, tracker, force=force)
                 _finish_run_log(
                     session,
                     run_log,

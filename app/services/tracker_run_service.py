@@ -24,7 +24,7 @@ class TrackerRunService:
     """串联采集、归一化、去重、评估、报告、投递全链路。"""
 
     @staticmethod
-    def run_once(session: Session, tracker: TrackerTask) -> dict:
+    def run_once(session: Session, tracker: TrackerTask, force: bool = False) -> dict:
         """执行一次 tracker 并返回执行结果摘要。"""
 
         logger = logging.getLogger(__name__)
@@ -103,8 +103,8 @@ class TrackerRunService:
         tracker.updated_at = now
         tracker.last_run_at = now
 
-        # 无新增且状态不变：跳过生成与推送，避免噪声。
-        if not relevant_items and level == previous_level:
+        # 无新增且状态不变时，默认跳过生成与推送；force 手动触发时不跳过。
+        if not force and not relevant_items and level == previous_level:
             session.add(tracker)
             session.commit()
             return {
@@ -114,6 +114,7 @@ class TrackerRunService:
                 "level": level.value,
                 "delivered": False,
                 "deduped": True,
+                "forced": force,
                 "metrics": {
                     "collect_ms": collect_ms,
                     "normalize_ms": normalize_ms,
@@ -133,7 +134,7 @@ class TrackerRunService:
         )
         evidence_fingerprint = stable_hash(*sorted([item["stable_hash"] for item in relevant_items]), level.value)
         dedupe_key = f"alert:{tracker.id}:{evidence_fingerprint}"
-        existing = session.exec(select(Report).where(Report.dedupe_key == dedupe_key)).first()
+        existing = None if force else session.exec(select(Report).where(Report.dedupe_key == dedupe_key)).first()
         # 相同证据指纹已经生成过报告：直接复用结果，避免重复推送。
         if existing:
             session.add(tracker)
@@ -145,6 +146,7 @@ class TrackerRunService:
                 "level": level.value,
                 "delivered": existing.delivered,
                 "deduped": True,
+                "forced": force,
                 "metrics": {
                     "collect_ms": collect_ms,
                     "normalize_ms": normalize_ms,
@@ -177,6 +179,7 @@ class TrackerRunService:
             "level": level.value,
             "delivered": delivered,
             "deduped": False,
+            "forced": force,
             "metrics": {
                 "collect_ms": collect_ms,
                 "normalize_ms": normalize_ms,
