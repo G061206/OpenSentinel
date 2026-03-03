@@ -62,6 +62,29 @@ def _finish_run_log(
     session.commit()
 
 
+def _finalize_running_log_if_needed(run_log_id: int | None, reason: str = "finalize_guard") -> None:
+    """兜底收口仍处于 running 状态的日志，避免面板长期悬挂。"""
+
+    if not run_log_id:
+        return
+
+    with Session(engine) as session:
+        run_log = session.get(TrackerRunLog, run_log_id)
+        if not run_log:
+            return
+        if run_log.status != "running" or run_log.ended_at is not None:
+            return
+
+        ended_at = datetime.now(timezone.utc)
+        run_log.status = "failed"
+        run_log.message = reason
+        run_log.error_type = "RunFinalizeGuard"
+        run_log.ended_at = ended_at
+        run_log.duration_ms = _compute_duration_ms(run_log.started_at, ended_at)
+        session.add(run_log)
+        session.commit()
+
+
 @celery_app.task(name="app.workers.tasks.run_tracker_once")
 def run_tracker_once(tracker_id: int, force: bool = False) -> dict:
     """执行单个 tracker，并用分布式锁防止并发重复执行。"""
@@ -69,6 +92,7 @@ def run_tracker_once(tracker_id: int, force: bool = False) -> dict:
     run_id = str(uuid4())
     bind_run_id(run_id)
     started = perf_counter()
+    run_log_id: int | None = None
 
     # 分布式锁：防止同一 tracker 在多 worker 并发执行。
     settings = get_settings()
@@ -93,6 +117,7 @@ def run_tracker_once(tracker_id: int, force: bool = False) -> dict:
             )
             session.add(run_log)
             session.commit()
+            run_log_id = run_log.id
         logger.info("tracker %d is already running, skipping", tracker_id)
         clear_run_id()
         return {"ok": False, "reason": "already_running", "run_id": run_id}
@@ -171,6 +196,7 @@ def run_tracker_once(tracker_id: int, force: bool = False) -> dict:
             lock.release()
         except LockNotOwnedError:
             logger.warning("lock for tracker %d expired before release", tracker_id)
+        _finalize_running_log_if_needed(run_log_id)
         clear_run_id()
 
 
